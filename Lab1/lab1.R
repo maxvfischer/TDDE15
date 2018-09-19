@@ -39,7 +39,7 @@ percent_equal = numeric(0)
 
 # Multiple iterations are done and the percentage of equal graphs
 # are calculated during each iteration
-for (i in seq(0, iter, 1)) {
+for (i in 1:iter) {
   HC1 = hc(asia, restart=5)
   HC2 = hc(asia, restart=5)
   if (all.equal(HC1, HC2) == TRUE) {
@@ -53,3 +53,56 @@ plot(percent_equal, type='l', xlab='Iteration', ylab='Percentage equal graphs')
 abline(h = mean(percent_equal), col="red", lty=2)
 legend(750, 1, legend=c("Percentage equal", "Mean"),
        col=c("black", "red"), lty=1:2, cex=0.8)
+
+## Part 2
+
+# Create train set (80%) and test set (20%)
+train_size = dim(asia)[1]*0.8
+train_indices = sample(nrow(asia), 4000)
+asia.train <- asia[train_indices, ]
+asia.test <- asia[-train_indices, ]
+S <- c("S")
+
+# Create Bayesian Network from train data
+train.hc <- hc(asia.train) 
+train.fit <- bn.fit(train.hc, asia.train) # Fit to train data
+train.as_grain <- as.grain(train.fit) # Create gRain object
+train.compiled <- compile(train.as_grain)
+
+# Create Bayesian Network from true network
+true = model2network("[A][S][T|A][L|S][B|S][D|B:E][E|T:L][X|E]") # True Bayesian network
+true.fit <- bn.fit(true, asia.train)
+true.as_grain <- as.grain(true.fit)
+true.compiled <- compile(true.as_grain)
+
+prediction_fit <- NULL
+prediction_true <- NULL
+
+# Loop for each observation in test set
+for (i in 1:dim(asia.test)[1]) {
+  
+  # Create correct formated vector for each observation
+  z <- NULL
+  for (j in c("A", "T", "L", "B", "E", "X", "D")) {
+    if (asia.train[i, j] == "no") {
+      z <- c(z, "no")
+    }
+    else {
+      z <- c(z, "yes")
+    }
+  }
+  
+  # Set evidence for train data and do prediction
+  hc3 <- setEvidence(train.compiled, nodes=c("A", "T", "L", "B", "E", "X", "D"), states=z)
+  x <- querygrain(hc3, c("S"))
+  prediction_fit <- if(x$S["no"] > x$S["yes"]) c(prediction_fit, "no") else c(prediction_fit, "yes")
+  
+  # Set evidence for true Bayesian network and do prediction
+  hc4 <- setEvidence(true.compiled, nodes=c("A", "T", "L", "B", "E", "X", "D"), states=z)
+  k <- querygrain(hc4, c("S"))
+  prediction_true <- if(x$S["no"] > x$S["yes"]) c(prediction_true, "no") else c(prediction_true, "yes")
+}
+
+# Confusion matrix
+confusion_matrix_fit <- table(prediction_fit, asia.test$S)
+confusion_matrix_true <- table(prediction_true, asia.test$S)
