@@ -84,7 +84,7 @@ for (i in 1:dim(asia.test)[1]) {
   # Create correct formated vector for each observation
   z <- NULL
   for (j in c("A", "T", "L", "B", "E", "X", "D")) {
-    if (asia.train[i, j] == "no") {
+    if (asia.test[i, j] == "no") {
       z <- c(z, "no")
     }
     else {
@@ -99,6 +99,65 @@ for (i in 1:dim(asia.test)[1]) {
   
   # Set evidence for true Bayesian network and do prediction
   hc4 <- setEvidence(true.compiled, nodes=c("A", "T", "L", "B", "E", "X", "D"), states=z)
+  k <- querygrain(hc4, c("S"))
+  prediction_true <- if(x$S["no"] > x$S["yes"]) c(prediction_true, "no") else c(prediction_true, "yes")
+}
+
+# Confusion matrix
+confusion_matrix_fit <- table(prediction_fit, asia.test$S)
+confusion_matrix_true <- table(prediction_true, asia.test$S)
+
+# Task 3
+train.hc <- hc(asia.train)
+train.mb <- mb(train.hc, "S")
+train.fit <- bn.fit(train.hc, asia.train)
+train.as_grain <- as.grain(train.fit)
+train.compiled <- compile(train.as_grain)
+
+# Create Bayesian Network from true network
+true = model2network("[A][S][T|A][L|S][B|S][D|B:E][E|T:L][X|E]") # True Bayesian network
+true.mb <- mb(true, "S")
+true.fit <- bn.fit(true, asia.train)
+true.as_grain <- as.grain(true.fit)
+true.compiled <- compile(true.as_grain)
+
+prediction_fit <- NULL
+prediction_true <- NULL
+
+# Loop for each observation in test set
+for (i in 1:dim(asia.test)[1]) {
+  
+  # For each observation in the test set, create correct formated vector of the 
+  # fitted model's Markov blanket
+  z <- NULL
+  for (j in train.mb) {
+    if (asia.test[i, j] == "no") {
+      z <- c(z, "no")
+    }
+    else {
+      z <- c(z, "yes")
+    }
+  }
+  
+  # For each observation in the test set, create correct formated vector of the 
+  # true model's Markov blanket
+  z <- NULL
+  for (j in true.mb) {
+    if (asia.test[i, j] == "no") {
+      z <- c(z, "no")
+    }
+    else {
+      z <- c(z, "yes")
+    }
+  }
+  
+  # Set evidence for train data and do prediction
+  hc3 <- setEvidence(train.compiled, nodes=train.mb, states=z)
+  x <- querygrain(hc3, c("S"))
+  prediction_fit <- if(x$S["no"] > x$S["yes"]) c(prediction_fit, "no") else c(prediction_fit, "yes")
+  
+  # Set evidence for true Bayesian network and do prediction
+  hc4 <- setEvidence(true.compiled, nodes=true.mb, states=z)
   k <- querygrain(hc4, c("S"))
   prediction_true <- if(x$S["no"] > x$S["yes"]) c(prediction_true, "no") else c(prediction_true, "yes")
 }
