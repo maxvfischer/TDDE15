@@ -5,13 +5,13 @@
 ## Packages
 print(require(gRain))
 if (!require(bnlearn)) {
-  install.packages(bnlearn)
+  install.packages("bnlearn")
 }
 
 if (!require(gRain)) {
   source("https://bioconductor.org/biocLite.R")
   biocLite("RBGL")
-  install.packages(gRain)
+  install.packages("gRain")
 }
 
 library(bnlearn)
@@ -100,7 +100,7 @@ for (i in 1:dim(asia.test)[1]) {
   # Set evidence for true Bayesian network and do prediction
   hc4 <- setEvidence(true.compiled, nodes=c("A", "T", "L", "B", "E", "X", "D"), states=z)
   k <- querygrain(hc4, c("S"))
-  prediction_true <- if(x$S["no"] > x$S["yes"]) c(prediction_true, "no") else c(prediction_true, "yes")
+  prediction_true <- if(k$S["no"] > k$S["yes"]) c(prediction_true, "no") else c(prediction_true, "yes")
 }
 
 # Confusion matrix
@@ -159,9 +159,54 @@ for (i in 1:dim(asia.test)[1]) {
   # Set evidence for true Bayesian network and do prediction
   hc4 <- setEvidence(true.compiled, nodes=true.mb, states=z)
   k <- querygrain(hc4, c("S"))
-  prediction_true <- if(x$S["no"] > x$S["yes"]) c(prediction_true, "no") else c(prediction_true, "yes")
+  prediction_true <- if(k$S["no"] > k$S["yes"]) c(prediction_true, "no") else c(prediction_true, "yes")
 }
 
 # Confusion matrix
 confusion_matrix_fit <- table(prediction_fit, asia.test$S)
+confusion_matrix_true <- table(prediction_true, asia.test$S)
+
+# Task 4
+# Create Naive Bayes Bayesian Network from train data
+naive_bayes <- model2network("[S][D|S][T|S][L|S][B|S][A|S][X|S][E|S]") # Naive bayes
+naive_bayes.fit <- bn.fit(naive_bayes, asia.train)
+naive_bayes.as_grain <- as.grain(naive_bayes.fit)
+naive_bayes.compiled <- compile(naive_bayes.as_grain)
+
+# Create Bayesian Network from true network
+true = model2network("[A][S][T|A][L|S][B|S][D|B:E][E|T:L][X|E]") # True Bayesian network
+true.fit <- bn.fit(true, asia.train)
+true.as_grain <- as.grain(true.fit)
+true.compiled <- compile(true.as_grain)
+
+prediction_naive_bayes <- NULL
+prediction_true <- NULL
+
+# Loop for each observation in test set
+for (i in 1:dim(asia.test)[1]) {
+  
+  # Create correct formated vector for each observation
+  z <- NULL
+  for (j in c("A", "T", "L", "B", "E", "X", "D")) {
+    if (asia.test[i, j] == "no") {
+      z <- c(z, "no")
+    }
+    else {
+      z <- c(z, "yes")
+    }
+  }
+  
+  # Set evidence for train data and do prediction
+  hc3 <- setEvidence(naive_bayes.compiled, nodes=c("A", "T", "L", "B", "E", "X", "D"), states=z)
+  x <- querygrain(hc3, c("S"))
+  prediction_naive_bayes <- if(x$S["no"] > x$S["yes"]) c(prediction_naive_bayes, "no") else c(prediction_naive_bayes, "yes")
+  
+  # Set evidence for true Bayesian network and do prediction
+  hc4 <- setEvidence(true.compiled, nodes=c("A", "T", "L", "B", "E", "X", "D"), states=z)
+  k <- querygrain(hc4, c("S"))
+  prediction_true <- if(k$S["no"] > k$S["yes"]) c(prediction_true, "no") else c(prediction_true, "yes")
+}
+
+# Confusion matrix
+confusion_matrix_naive_bayes <- table(prediction_naive_bayes, asia.test$S)
 confusion_matrix_true <- table(prediction_true, asia.test$S)
