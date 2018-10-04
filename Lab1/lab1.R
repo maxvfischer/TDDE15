@@ -165,3 +165,5 @@ for (i in 1:dim(asia.test)[1]) {
 # Confusion matrix
 confusion_matrix_fit <- table(prediction_fit, asia.test$S)
 confusion_matrix_true <- table(prediction_true, asia.test$S)
+
+# Task 4
