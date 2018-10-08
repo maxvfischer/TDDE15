@@ -89,21 +89,32 @@ for (t in 1:(T-1)) {
                                replace = TRUE)
 }
 
+# Plot settings
+par(mfrow=c(2, 2))
+
 # First time step
+hist(Z_particles[1, ], xlab = 'Particles', main = 't = 1', breaks = 20)
+abline(v = mean(Z_particles[1, ]), col = 'red')
 print(Z_particles[1, ]) # Particles
 print(data$Z_true[1]) # True location
 
-# Last time step
-print(Z_particles[100, ]) # Particles
-print(data$Z_true[100]) # True location
-
 # 30 th time step
+hist(Z_particles[30, ], xlab = 'Particles', main = 't = 30', breaks = 20)
+abline(v = mean(Z_particles[30, ]), col = 'red')
 print(Z_particles[30, ]) # Particles
 print(data$Z_true[30]) # True location
 
 # 60th time step
+hist(Z_particles[60, ], xlab = 'Particles', main = 't = 60', breaks = 20)
+abline(v = mean(Z_particles[60, ]), col = 'red')
 print(Z_particles[60, ]) # Particles
 print(data$Z_true[60]) # True location
+
+# Last time step
+hist(Z_particles[100, ], xlab = 'Particles', main = 't = 100', breaks = 20)
+abline(v = mean(Z_particles[100, ]), col = 'red')
+print(Z_particles[100, ]) # Particles
+print(data$Z_true[100]) # True location
 
 #################### Task 2 ####################
 ## Generate true hidden states and observations
@@ -163,38 +174,62 @@ for (t in 1:(T-1)) {
 }
 
 ## Sigma = 5
+
+# Plot setup
+par(mfrow=c(2, 2))
+
 # First time step
+hist(Z_5_particles[1, ], xlab = 'Particles', main = 't = 1', breaks = 20)
+abline(v = mean(Z_5_particles[1, ]), col = 'red')
 print(Z_5_particles[1, ]) # Particles
 print(data_5$Z_true[1]) # True location
 
-# Last time step
-print(Z_5_particles[100, ]) # Particles
-print(data_5$Z_true[100]) # True location
-
 # 30 th time step
+hist(Z_5_particles[30, ], xlab = 'Particles', main = 't = 30', breaks = 20)
+abline(v = mean(Z_5_particles[30, ]), col = 'red')
 print(Z_5_particles[30, ]) # Particles
 print(data_5$Z_true[30]) # True location
 
 # 60th time step
+hist(Z_5_particles[60, ], xlab = 'Particles', main = 't = 60', breaks = 20)
+abline(v = mean(Z_5_particles[60, ]), col = 'red')
 print(Z_5_particles[60, ]) # Particles
-print(data_5$Z_true[60 ]) # True location
+print(data_5$Z_true[60]) # True location
+
+# Last time step
+hist(Z_5_particles[100, ], xlab = 'Particles', main = 't = 100', breaks = 20)
+abline(v = mean(Z_5_particles[100, ]), col = 'red')
+print(Z_5_particles[100, ]) # Particles
+print(data_5$Z_true[100 ]) # True location
 
 ## Sigma = 50
+
+# Plot setup
+par(mfrow=c(2, 2))
+
 # First time step
+hist(Z_50_particles[1, ], xlab = 'Particles', main = 't = 1', breaks = 20)
+abline(v = mean(Z_50_particles[1, ]), col = 'red')
 print(Z_50_particles[1, ]) # Particles
 print(data_50$Z_true[1]) # True location
 
-# Last time step
-print(Z_50_particles[100, ]) # Particles
-print(data_50$Z_true[100]) # True location
-
 # 30 th time step
+hist(Z_50_particles[30, ], xlab = 'Particles', main = 't = 30', breaks = 20)
+abline(v = mean(Z_50_particles[30, ]), col = 'red')
 print(Z_50_particles[30, ]) # Particles
 print(data_50$Z_true[30]) # True location
 
 # 60th time step
+hist(Z_50_particles[60, ], xlab = 'Particles', main = 't = 60', breaks = 20)
+abline(v = mean(Z_50_particles[60, ]), col = 'red')
 print(Z_50_particles[60, ]) # Particles
-print(data_50$Z_true[60 ]) # True location
+print(data_50$Z_true[60]) # True location
+
+# Last time step
+hist(Z_50_particles[100, ], xlab = 'Particles', main = 't = 100', breaks = 20)
+abline(v = mean(Z_50_particles[100, ]), col = 'red')
+print(Z_50_particles[100, ]) # Particles
+print(data_50$Z_true[100 ]) # True location
 
 #################### Task 3 ####################
 ## Generate true hidden states and observations
@@ -234,18 +269,29 @@ for (t in 1:(T-1)) {
                               replace = TRUE)
 }
 
+# Plot setup
+par(mfrow=c(2, 2))
+
 # First time step
+plot(Z_particles[1, ], ylab = 'Location', xlab = 'Particles', main = 't = 1')
+abline(h = mean(Z_particles[1, ]), col = 'red')
 print(Z_particles[1, ]) # Particles
 print(data$Z_true[1]) # True location
 
-# Last time step
-print(Z_particles[100, ]) # Particles
-print(data$Z_true[100]) # True location
-
 # 30 th time step
+plot(Z_particles[30, ], type='l', ylab = 'Location', xlab = 'Particles', main = 't = 30')
+abline(h = mean(Z_particles[30, ]), col = 'red')
 print(Z_particles[30, ]) # Particles
 print(data$Z_true[30]) # True location
 
 # 60th time step
+plot(Z_particles[60, ], type='l', ylab = 'Location', xlab = 'Particles', main = 't = 60')
+abline(h = mean(Z_particles[60, ]), col = 'red')
 print(Z_particles[60, ]) # Particles
 print(data$Z_true[60]) # True location
+
+# Last time step
+plot(Z_particles[100, ], type='l', ylab = 'Location', xlab = 'Particles', main = 't = 100')
+abline(h = mean(Z_particles[100, ]), col = 'red')
+print(Z_particles[100, ]) # Particles
+print(data$Z_true[100 ]) # True location
