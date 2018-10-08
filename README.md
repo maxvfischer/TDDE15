@@ -14,7 +14,7 @@ TDDE15 - Advanced Machine Learning | Linköpings university
 * Viterbi algorithm
 * Hidden probabilities of a future, hidden time step
 
-## Lab3 contains
+## Lab 3 contains
 * Particle filter
 * Implementation of a State-Space Models from given transition, emission and initial models
 * Elaboration of standard deviation within the emission model
