@@ -13,6 +13,8 @@ squared_exponential <- function(X, X_tick, sigma, l) {
   return(K)
 }
 
+
+#################### Task 1 ####################
 ## Input:
 # x: Vector of training inputs.
 # y: Vector of training targets/outputs.
@@ -22,38 +24,63 @@ squared_exponential <- function(X, X_tick, sigma, l) {
 posteriorGP <- function(x, y, XStar,
                         hyperParam, sigmaNoise) {
   n <- length(x)
-  sigma <- hyperParam[1]
+  sigma_f <- hyperParam[1]
   l <- hyperParam[2]
   
-  # Covariance matrix of X and X
-  # X is of 1-dim 
-  K <- squared_exponential(X = x, X_tick = x,
-                           sigma = sigma, l = l)
+  # Covariance matrices
+  # k(X, X)
+  # k(X, X*)
+  # k(X*, X*)
+  K.X_X = squared_exponential(X = x, X_tick = x,
+                           sigma = sigma_f, l = l)
+  K.X_XStar <- squared_exponential(X = x, X_tick = XStar,
+                                               sigma = sigma_f, l = l)
+  K.XStar_XStar <- squared_exponential(X = XStar, X_tick = XStar,
+                                                   sigma = sigma_f, l = l)
   
-  # Covariance matrix of X (train) and X* (test)
-  K_star <- squared_exponential(X = x, X_tick = XStar,
-                                sigma = sigma, l = l)
-  
-  # Diagonal matrix with sigma in diagonal
-  sigma_noice_identity <- (sigmaNoise^2)*diag(n)
-  
+  # Diagonal matrix of sigma noise
+  diagonal_variance_noise <- (sigmaNoise^2) * diag(length(x))
+
   # Cholesky factorization
   # (K + sigma_identity) = L %*% t(L)
-  L_upper <- chol(x = (K + sigma_noice_identity))
+  L_upper <- chol(x = (K.X_X + diagonal_variance_noise))
   L_lower <- t(L_upper)
-  
+
   # Predictive mean
   # Same as on lecture 10 where
   # mean_f = K(XStar, X)%*%inverse([K(X, X) + sigma_identity])*y
   alpha_denom <- solve(a = L_lower, b = y)
   alpha <- solve(a = t(L_lower), b = alpha_denom)
-  f_mean <- t(K_star) %*% alpha
+  f_mean <- t(K.X_XStar) %*% alpha
   
   # Predictive variance
-  f_variance <- solve(a = L_lower, b = K_star)
-  
-  return (list('pred_mean': f_mean, 'pred_var': f_variance))
+  v <- solve(a = L_lower, b = K.X_XStar)
+  f_variance <- K.XStar_XStar - t(v) %*% v
+  return (list('pred_mean' = f_mean, 'pred_var' = f_variance))
 }
 
-prior_sigma_f <- 1
-prior_l_f <- 0.3
+#################### Task 2 ####################
+sigma_f <- 1
+l <- 0.3
+hyperParam <- c(sigma_f, l)
+x <- 0.4
+y <- 0.719
+x_star <- seq(from = -1, to = 1, by = 0.01)
+sigma_n <- 0.1
+
+GP_posterior <- posteriorGP(x = x, y = y, XStar = x_star,
+                             hyperParam = hyperParam,
+                             sigmaNoise = sigma_n)
+
+# Calculate lower and upper 95 % pointwise confidence interval
+GP_CI <- data.frame(upper = as.vector(GP_posterior$pred_mean) + 1.96 * as.vector(sqrt(GP_posterior$pred_var)),
+                    lower = as.vector(GP_posterior$pred_mean) - 1.96 * as.vector(sqrt(GP_posterior$pred_var)))
+plot(x = x_star, y = GP_posterior$pred_mean, type = 'l')
+lines(x = x_star, y = GP_CI$upper)
+lines(x = x_star, y = GP_CI$lower)
+######################
+
+
+
+
+
