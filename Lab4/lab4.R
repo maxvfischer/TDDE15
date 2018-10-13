@@ -3,6 +3,8 @@
 ##################################
 
 #################### Functions ####################
+
+## Kernel (covariate)
 squared_exponential <- function(X, X_tick, sigma, l) {
   n1 <- length(X)
   n2 <- length(X_tick)
@@ -13,7 +15,8 @@ squared_exponential <- function(X, X_tick, sigma, l) {
   return(K)
 }
 
-plotGP <- function(x, y, x_star, GP_mean, GP_var) {
+# Plot 
+plotGP <- function(x = NULL, y = NULL, x_star, GP_mean, GP_var) {
   
   # Calculate lower and upper 95 % pointwise confidence interval
   GP_CI <- data.frame(upper = as.vector(GP_mean) + 1.96 * sqrt(GP_var),
@@ -22,25 +25,34 @@ plotGP <- function(x, y, x_star, GP_mean, GP_var) {
   # Upper and lower y-limits based on max/min mean +- std (pointwise)
   y_lim <- c(max(GP_CI$upper) + 0.5, min(GP_CI$lower) - 0.5)
   
+  # Generate initial plot with labels
   plot(x = x_star, 
        y = GP_mean, 
        type = 'l', 
        ylim = y_lim,
        xlab = 'x-values',
        ylab = 'Posterior probabilities')
-  polygon(c(rev(x_star), x_star), 
-          c(rev(GP_CI$upper), GP_CI$lower), 
+  
+  # Pointwise confidence interval (grayed)
+  polygon(x = c(rev(x_star), x_star), 
+          y = c(rev(GP_CI$upper), GP_CI$lower), 
           col = 'grey80', border = NA,
           ylim = y_lim,
           xlab = 'x-values',
           ylab = 'Posterior probabilities')
+  
+  # Lines: Mean, upper CI and lower CI
   lines(x = x_star, y = GP_mean)
   lines(x = x_star, y = GP_CI$upper, lty = 'dashed', col = 'red')
   lines(x = x_star, y = GP_CI$lower, lty = 'dashed', col = 'red')
-  points(x = x, y = y, type = 'p')
+  
+  # Observations
+  if (!is.null(x) && !is.null(y)) {
+    points(x = x, y = y, type = 'p')
+  }
 }
 
-#################### Task 2.2.1 ####################
+#################### Task 2.1.1 ####################
 ## Input:
 # x: Vector of training inputs.
 # y: Vector of training targets/outputs.
@@ -85,7 +97,7 @@ posteriorGP <- function(x, y, XStar,
   return (list('pred_mean' = f_mean, 'pred_var' = f_variance))
 }
 
-#################### Task 2.2.2 ####################
+#################### Task 2.1.2 ####################
 sigma_f <- 1
 l <- 0.3
 hyperParam <- c(sigma_f, l)
@@ -94,6 +106,9 @@ y <- 0.719
 x_star <- seq(from = -1, to = 1, by = 0.01)
 sigma_n <- 0.1
 
+# x: train
+# y: train
+# XStar: test
 GP_posterior <- posteriorGP(x = x, y = y, XStar = x_star,
                              hyperParam = hyperParam,
                              sigmaNoise = sigma_n)
@@ -104,7 +119,7 @@ plotGP(x = x, y = y, x_star = x_star,
        GP_mean = GP_posterior$pred_mean,
        GP_var = GP_posterior$pred_var)
 
-#################### Task 2.2.3 ####################
+#################### Task 2.1.3 ####################
 sigma_f <- 1
 l <- 0.3
 hyperParam <- c(sigma_f, l)
@@ -122,7 +137,7 @@ plotGP(x = x, y = y, x_star = x_star,
        GP_mean = GP_posterior$pred_mean,
        GP_var = GP_posterior$pred_var)
 
-#################### Task 2.2.4 ####################
+#################### Task 2.1.4 ####################
 sigma_f <- 1
 l <- 0.3
 hyperParam <- c(sigma_f, l)
@@ -140,9 +155,9 @@ plotGP(x = x, y = y, x_star = x_star,
        GP_mean = GP_posterior$pred_mean,
        GP_var = GP_posterior$pred_var)
 
-#################### Task 2.2.5 ####################
+#################### Task 2.1.5 ####################
 sigma_f <- 1
-l <- 1
+l <- 5
 hyperParam <- c(sigma_f, l)
 x <- c(-1.0, -0.6, -0.2, 0.4, 0.8)
 y <- c(0.768, -0.044, -0.940, 0.719, -0.664)
@@ -157,3 +172,167 @@ GP_posterior <- posteriorGP(x = x, y = y, XStar = x_star,
 plotGP(x = x, y = y, x_star = x_star,
        GP_mean = GP_posterior$pred_mean,
        GP_var = GP_posterior$pred_var)
+
+###################### Task 2 ######################
+
+# Install and import package
+if (!require(kernlab)) {
+  install.packages('kernlab')
+}
+
+library(kernlab)
+
+# Import dataset
+temp_tullinge <- read.csv("https://raw.githubusercontent.com/STIMALiU/AdvMLCourse/master/GaussianProcess/Code/TempTullinge.csv", header=TRUE, sep=";")
+
+# Variables
+time <- seq(from = 1, to = 365*6, by = 5) # Every fifth day since start
+year_days <- seq(from = 1, to = 365, by = 5) # Everu fifth day of the year
+day <- c(year_days, year_days, year_days, year_days, year_days, year_days) # year_days concatinated 6 times
+temp_time <- temp_tullinge$temp[time] # Only the temperatures of every fifth day
+
+#################### Task 2.2.1 ####################
+#################### Functions #####################
+
+# Squared exponential kernel wrapped in a function
+squared_exponential_nested <- function(sigma_f = 1, l = 1) {
+  rval <- function(x, y = NULL) {
+    n1 <- length(x)
+    n2 <- length(y)
+    K <- matrix(NA, n1, n2)
+    r <- abs(x - y)
+    for (i in 1:n2) {
+      K[, i] <- (sigma_f^2)*exp(-0.5*(r/l))
+    }
+    return (K)
+  }
+  class(rval) <- 'kernel'
+  return(rval)
+}
+
+sigma_f <- 1
+l <- 0.3
+x <- c(1, 3, 4)
+x_star <- c(2, 3, 4)
+
+sqrd_exp <- squared_exponential_nested(sigma_f = sigma_f, l = l)
+eval <- sqrd_exp(x = 1, y = 3)
+K <- kernelMatrix(kernel = sqrd_exp, x = x, y = x_star)
+
+#################### Task 2.2.2 ####################
+# temp = f(time) + ε
+# ε ~ N(0, σ_n^2)
+# f ~ GP(0, k(time, time'))
+
+sigma_f <- 20
+l <- 0.2
+
+# Estimate noise variable (sigma_n)
+fit <- lm(temp_time ~ time + time^2)
+sigma_n <- sd(fit$residuals)
+
+# Fit Gaussian process
+GPfit_time <- gausspr(x = time,
+                 y = temp_time, 
+                 kernel = squared_exponential_nested, 
+                 kpar = list(sigma_f = sigma_f, l = l),
+                 var = sigma_n^2)
+
+# Compute posterior mean of every training data
+GPpred_time <- predict(GPfit_time, time)
+
+# Plot
+plot(x = time, y = temp_time, ylab = 'Temperature', xlab = 'Number of days')
+lines(x = time, y = GPpred_time, col = 'red')
+
+#################### Task 2.2.3 ####################
+
+# Scale both time, GPpred and XStar, or just GPpred?
+posterior_f <- posteriorGP(x = (time),
+                           y = scale(GPpred_time),
+                           XStar = (seq(1, 365*6, 1)),
+                           hyperParam = c(sigma_f, l),
+                           sigmaNoise = sigma_n)
+
+# Plot
+plotGP(x_star = time,
+       GP_mean = GPpred_time,
+       GP_var = posterior_f$pred_var[time])
+points(x = time, y = temp_time)
+
+#################### Task 2.2.4 ####################
+# temp = f(day) + ε
+# ε ~ N(0, σ_n^2)
+# f ~ GP(0, k(day, day'))
+# temp_time will work for day aswell, as it's the temp of every 6th day
+
+sigma_f <- 20
+l <- 0.2
+
+# Estimate noise variable (sigma_n)
+fit <- lm(temp_time ~ day + day^2)
+sigma_n <- sd(fit$residuals)
+
+# Fit Gaussian process
+GPfit_day <- gausspr(x = day,
+                 y = temp_time,
+                 kernel = squared_exponential_nested,
+                 kpar = list(sigma_f = sigma_f, l = l),
+                 var = sigma_n^2)
+
+# Predict f mean with fitted Gaussian process
+GPpred_day <- predict(GPfit_day, day)
+
+# Plot data-points, time and day
+plot(x = time, y = temp_time, ylab = 'Temperature', xlab = 'Days', ylim = c(min(temp_time), max(temp_time) + 20))
+lines(x = time, y = GPpred_time, col = 'red')
+lines(x = time, y = GPpred_day, col = 'blue')
+legend(x = max(time) - 400,
+       y = max(temp_time) + 20,
+       legend = c('Time', 'Day'),
+       col = c('red', 'blue'),
+       lty = 1:1)
+
+#################### Task 2.2.5 ####################
+
+#################### Functions #####################
+
+# Generalized pereodic kernel
+generalized_periodic_kernel <- function(sigma_f, l1, l2, d) {
+  rval <- function(x, x_star) {
+    return ((sigma_f^2) * exp( -(2 * sin(pi * abs(x - x_star) / d)^2) / l1^2) * exp(-0.5 * (abs(x - x_star)^2) / l2^2))
+  }
+  class(rval) <- 'kernel'
+  return(rval)
+}
+
+sigma_f <- 20
+l1 <- 1
+l2 <- 10
+d <- 365/sd(time)
+
+# Calculate noise variable (sigma_n)
+fit <- lm(temp_time ~ time)
+sigma_n <- sd(fit$residuals)
+
+# Fit Gaussian process
+GPfit_periodic <- gausspr(x = time,
+                 y = temp_time,
+                 kernel = generalized_periodic_kernel,
+                 kpar = list(sigma_f = sigma_f, l1 = l1, l2 = l2, d = d),
+                 var = sigma_n)
+
+# Predict mean of f with Gaussian process
+GPpred_periodic <- predict(GPfit_periodic, time)
+
+# Plot
+plot(x = time, y = temp_time, ylab = 'Temperature', xlab = 'Days', ylim = c(min(temp_time), max(temp_time) + 20))
+lines(x = time, y = GPpred_time, col = 'red')
+lines(x = time, y = GPpred_day, col = 'blue')
+lines(x = time, y = GPpred_periodic, col = 'green')
+legend(x = max(time) - 500,
+       y = max(temp_time) + 20,
+       legend = c('Time', 'Day', 'Periodic'),
+       col = c('red', 'blue', 'green'),
+       lty = 1:1)
+
