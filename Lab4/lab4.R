@@ -223,7 +223,7 @@ K <- kernelMatrix(kernel = sqrd_exp, x = x, y = x_star)
 # temp = f(time) + ε
 # ε ~ N(0, σ_n^2)
 # f ~ GP(0, k(time, time'))
-
+set.seed(12345)
 sigma_f <- 20
 l <- 0.2
 
@@ -265,7 +265,7 @@ points(x = time, y = temp_time)
 # ε ~ N(0, σ_n^2)
 # f ~ GP(0, k(day, day'))
 # temp_time will work for day aswell, as it's the temp of every 6th day
-
+set.seed(12345)
 sigma_f <- 20
 l <- 0.2
 
@@ -305,7 +305,7 @@ generalized_periodic_kernel <- function(sigma_f, l1, l2, d) {
   class(rval) <- 'kernel'
   return(rval)
 }
-
+set.seed(12345)
 sigma_f <- 20
 l1 <- 1
 l2 <- 10
@@ -336,3 +336,83 @@ legend(x = max(time) - 500,
        col = c('red', 'blue', 'green'),
        lty = 1:1)
 
+#################### Task 2.3 ####################
+# Install necessary packages
+if (!require('AtmRay')) {
+  install.packages(AtmRay)
+}
+library(AtmRay)
+
+# Import data
+data <- read.csv("https://raw.githubusercontent.com/STIMALiU/AdvMLCourse/master/GaussianProcess/Code/banknoteFraud.csv", header=FALSE, sep=",")
+names(data) <- c("varWave","skewWave","kurtWave","entropyWave","fraud")
+data[,5] <- as.factor(data[,5])
+
+# Sample 1000 training points from data
+set.seed(12345)
+train_indices <- sample(x = 1:dim(data)[1], size = 1000, replace = FALSE)
+data.train <- data[train_indices, ]
+data.test <- data[-train_indices, ]
+
+#################### Task 2.3.1 ####################
+
+# Fit a Gaussian Process classification on training data
+# Fit fraud by varWave and skewWave
+GPfit_classification <- gausspr(fraud ~ varWave + skewWave,
+                                data = data.train,
+                                type = 'classification')
+
+# Grid values
+grid.varWave <- seq(from = min(data.train$varWave),
+                    to = max(data.train$varWave),
+                    length.out = 100)
+grid.skewWave <- seq(from = min(data.train$skewWave),
+                     to = max(data.train$skewWave),
+                     length.out = 100)
+# x: Each value in y has a corresponding row in x with all x values,
+#    thus, each row in x will be the same
+# y: Each value in x has a corresponding column in y with all y values,
+#    thus, each column in y will be the same
+gridPoints <- meshgrid(grid.varWave, grid.skewWave)
+# All combinations of varWave and skewWave
+# For each value in x (varWave), there is combinations with all y values (skewWave)
+gridPoints <- cbind(c(gridPoints$x), c(gridPoints$y))
+# Data frame the above
+gridPoints <- data.frame(gridPoints) 
+names(gridPoints) <- c('varWave', 'skewWave')
+
+# Prediction by Gaussian process
+# Probability of each combination of varWave and skewWave
+# in gridPoints being 0 or 1 (not fraud or fraud)
+GPgrid_probs <- predict(GPfit_classification, 
+                                 gridPoints,
+                                 type = 'probabilities')
+
+# Indices of fraud/non-fraud observations
+fraud_indices <- which(data.train$fraud %in% c(1))
+non_fraud_indices <- which(data.train$fraud %in% c(0))
+
+# Plot contours
+# Create grid by varWave and skewWave
+# GPgrid_probs[, 1] contains the probabilities of fraud for each
+# combination of varWave and skewWave in the grid
+contour(x = grid.varWave, 
+        y = grid.skewWave,
+        z = matrix(GPgrid_probs[, 1], 100, byrow = TRUE))
+# Plot fraud points
+points(x = data.train$varWave[fraud_indices], 
+       y = data.train$skewWave[fraud_indices],
+       col = 'blue')
+# Plot non-fraud points
+points(x = data.train$varWave[non_fraud_indices],
+       y = data.train$skewWave[non_fraud_indices],
+       col = 'red')
+
+# Confusion matrix of Gaussian process fit
+GPpred_classification_train <- predict(GPfit_classification, data.train)
+confusion_matrix_train <- table(GPpred_classification_train, data.train$fraud)
+accuracy_train <- (confusion_matrix_train[1, 1]+confusion_matrix_train[2, 2])/sum(confusion_matrix_train)
+
+#################### Task 2.3.2 ####################
+GPpred_classification_test <- predict(GPfit_classification, data.test)
+confusion_matrix_test <- table(GPpred_classification_test, data.test$fraud)
