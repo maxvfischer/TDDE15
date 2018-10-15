@@ -407,7 +407,7 @@ non_fraud_indices <- which(data.train$fraud %in% c(0))
 # combination of varWave and skewWave in the grid
 contour(x = grid.varWave, 
         y = grid.skewWave,
-        z = matrix(GPgrid_probs[, 1], 100, byrow = TRUE))
+        z = matrix(GPgrid_probs[, 2], 100, byrow = TRUE))
 # Plot fraud points
 points(x = data.train$varWave[fraud_indices], 
        y = data.train$skewWave[fraud_indices],
