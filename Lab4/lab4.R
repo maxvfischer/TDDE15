@@ -23,7 +23,7 @@ plotGP <- function(x = NULL, y = NULL, x_star, GP_mean, GP_var) {
                     lower = as.vector(GP_mean) - 1.96 * sqrt(GP_var))
   
   # Upper and lower y-limits based on max/min mean +- std (pointwise)
-  y_lim <- c(max(GP_CI$upper) + 0.5, min(GP_CI$lower) - 0.5)
+  y_lim <- c(min(GP_CI$lower) - 0.5, max(GP_CI$upper) + 0.5)
   
   # Generate initial plot with labels
   plot(x = x_star, 
@@ -31,7 +31,7 @@ plotGP <- function(x = NULL, y = NULL, x_star, GP_mean, GP_var) {
        type = 'l', 
        ylim = y_lim,
        xlab = 'x-values',
-       ylab = 'Posterior probabilities')
+       ylab = 'Posterior of f')
   
   # Pointwise confidence interval (grayed)
   polygon(x = c(rev(x_star), x_star), 
@@ -39,10 +39,10 @@ plotGP <- function(x = NULL, y = NULL, x_star, GP_mean, GP_var) {
           col = 'grey80', border = NA,
           ylim = y_lim,
           xlab = 'x-values',
-          ylab = 'Posterior probabilities')
+          ylab = 'Posterior of f')
   
   # Lines: Mean, upper CI and lower CI
-  lines(x = x_star, y = GP_mean)
+  lines(x = x_star, y = GP_mean, col = 'red')
   lines(x = x_star, y = GP_CI$upper, lty = 'dashed', col = 'red')
   lines(x = x_star, y = GP_CI$lower, lty = 'dashed', col = 'red')
   
@@ -216,7 +216,7 @@ x <- c(1, 3, 4)
 x_star <- c(2, 3, 4)
 
 sqrd_exp <- squared_exponential_nested(sigma_f = sigma_f, l = l)
-eval <- sqrd_exp(x = 1, y = 3)
+eval <- sqrd_exp(x = 1, y = 2)
 K <- kernelMatrix(kernel = sqrd_exp, x = x, y = x_star)
 
 #################### Task 2.2.2 ####################
@@ -244,6 +244,11 @@ GPpred_time <- predict(GPfit_time, time)
 # Plot
 plot(x = time, y = temp_time, ylab = 'Temperature', xlab = 'Number of days')
 lines(x = time, y = GPpred_time, col = 'red')
+legend("topright", 
+       legend = c("Data", "Posterior mean"), 
+       col = c("black", "red"), 
+       pch = c(1, NA),
+       lty = c(NA, 1))
 
 #################### Task 2.2.3 ####################
 
@@ -259,6 +264,11 @@ plotGP(x_star = time,
        GP_mean = GPpred_time,
        GP_var = posterior_f$pred_var[time])
 points(x = time, y = temp_time)
+legend('topright',
+       legend = c("Data", "Posterior mean", "95% CI"),
+       col = c("black", "red", "grey80"),
+       pch = c(1, NA, 15),
+       lty = c(NA, 1, NA))
 
 #################### Task 2.2.4 ####################
 # temp = f(day) + ε
@@ -284,14 +294,14 @@ GPfit_day <- gausspr(x = day,
 GPpred_day <- predict(GPfit_day, day)
 
 # Plot data-points, time and day
-plot(x = time, y = temp_time, ylab = 'Temperature', xlab = 'Days', ylim = c(min(temp_time), max(temp_time) + 20))
+plot(x = time, y = temp_time, ylab = 'Temperature', xlab = 'Days', ylim = c(min(temp_time), max(temp_time) + 10))
 lines(x = time, y = GPpred_time, col = 'red')
 lines(x = time, y = GPpred_day, col = 'blue')
-legend(x = max(time) - 400,
-       y = max(temp_time) + 20,
-       legend = c('Time', 'Day'),
-       col = c('red', 'blue'),
-       lty = 1:1)
+legend('topright',
+       legend = c('Data', 'Time', 'Day'),
+       col = c('black', 'red', 'blue'),
+       pch = c(1, NA, NA),
+       lty = c(NA, 1, 1))
 
 #################### Task 2.2.5 ####################
 
@@ -326,20 +336,20 @@ GPfit_periodic <- gausspr(x = time,
 GPpred_periodic <- predict(GPfit_periodic, time)
 
 # Plot
-plot(x = time, y = temp_time, ylab = 'Temperature', xlab = 'Days', ylim = c(min(temp_time), max(temp_time) + 20))
+plot(x = time, y = temp_time, ylab = 'Temperature', xlab = 'Days', ylim = c(min(temp_time), max(temp_time) + 10))
 lines(x = time, y = GPpred_time, col = 'red')
 lines(x = time, y = GPpred_day, col = 'blue')
 lines(x = time, y = GPpred_periodic, col = 'green')
-legend(x = max(time) - 500,
-       y = max(temp_time) + 20,
-       legend = c('Time', 'Day', 'Periodic'),
-       col = c('red', 'blue', 'green'),
-       lty = 1:1)
+legend('topright',
+       legend = c('Data', 'Time', 'Day', 'Periodic'),
+       col = c('black', 'red', 'blue', 'green'),
+       pch = c(1, NA, NA, NA),
+       lty = c(NA, 1, 1, 1))
 
 #################### Task 2.3 ####################
 # Install necessary packages
 if (!require('AtmRay')) {
-  install.packages(AtmRay)
+  install.packages('AtmRay')
 }
 library(AtmRay)
 
@@ -359,8 +369,7 @@ data.test <- data[-train_indices, ]
 # Fit a Gaussian Process classification on training data
 # Fit fraud by varWave and skewWave
 GPfit_classification <- gausspr(fraud ~ varWave + skewWave,
-                                data = data.train,
-                                type = 'classification')
+                                data = data.train)
 
 # Grid values
 grid.varWave <- seq(from = min(data.train$varWave),
@@ -407,12 +416,29 @@ points(x = data.train$varWave[fraud_indices],
 points(x = data.train$varWave[non_fraud_indices],
        y = data.train$skewWave[non_fraud_indices],
        col = 'red')
+legend('topright',
+       legend = c('Fraud', 'Not fraud'),
+       col = c('blue', 'red'),
+       pch = c(1, 1))
 
-# Confusion matrix of Gaussian process fit
+# Confusion matrix and accuracy on train data
 GPpred_classification_train <- predict(GPfit_classification, data.train)
 confusion_matrix_train <- table(GPpred_classification_train, data.train$fraud)
-accuracy_train <- (confusion_matrix_train[1, 1]+confusion_matrix_train[2, 2])/sum(confusion_matrix_train)
+accuracy_train <- sum(diag(confusion_matrix_train))/sum(confusion_matrix_train)
 
 #################### Task 2.3.2 ####################
+# Confusion matrix and accuracy on test data
 GPpred_classification_test <- predict(GPfit_classification, data.test)
 confusion_matrix_test <- table(GPpred_classification_test, data.test$fraud)
+accuracy <- sum(diag(confusion_matrix_test))/sum(confusion_matrix_test)
+
+#################### Task 2.3.3 ####################
+# Fit the Gaussian process classifier on all variables
+GPfit_classification_all_var <- gausspr(fraud ~., data = data.train)
+
+# Predict by test data
+GPpred_classification_test <- predict(GPfit_classification_all_var, data.test)
+
+# Confusion matrix and accuracy
+confusion_matrix_all_var <- table(GPpred_classification_test, data.test$fraud)
+accuracy <- sum(diag(confusion_matrix_all_var))/sum(confusion_matrix_all_var)
