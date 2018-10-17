@@ -3,7 +3,6 @@
 ##################################
 
 ## Packages
-print(require(gRain))
 if (!require(bnlearn)) {
   install.packages("bnlearn")
 }
@@ -33,17 +32,19 @@ data('asia')
 # Hill climbing
 # Restart set to 5. When a local maxima is found, a number of random changes is done to the graph
 # and then the algorithm continues. It often leads to different graphs.
-iter = 1000
+iter = 100
 no_of_equal = 0
 percent_equal = numeric(0)
 
 # Multiple iterations are done and the percentage of equal graphs
 # are calculated during each iteration
 for (i in 1:iter) {
-  HC1 = hc(asia, restart=5)
-  HC2 = hc(asia, restart=5)
+  HC1 <- hc(asia, score='aic')
+  HC1 <- cpdag(HC1)
+  HC2 <- hc(asia)
+  HC2 <- cpdag(HC2)
   if (all.equal(HC1, HC2) == TRUE) {
-    no_of_equal = no_of_equal + 1
+    no_of_equal <- no_of_equal + 1
   }
   percent_equal[i] <- no_of_equal/i
 }

@@ -157,7 +157,7 @@ plotGP(x = x, y = y, x_star = x_star,
 
 #################### Task 2.1.5 ####################
 sigma_f <- 1
-l <- 5
+l <- 1
 hyperParam <- c(sigma_f, l)
 x <- c(-1.0, -0.6, -0.2, 0.4, 0.8)
 y <- c(0.768, -0.044, -0.940, 0.719, -0.664)
@@ -202,7 +202,7 @@ squared_exponential_nested <- function(sigma_f = 1, l = 1) {
     K <- matrix(NA, n1, n2)
     r <- abs(x - y)
     for (i in 1:n2) {
-      K[, i] <- (sigma_f^2)*exp(-0.5*(r/l))
+      K[, i] <- (sigma_f^2)*exp(-0.5*(r/l)^2)
     }
     return (K)
   }
@@ -253,9 +253,9 @@ legend("topright",
 #################### Task 2.2.3 ####################
 
 # Scale both time, GPpred and XStar, or just GPpred?
-posterior_f <- posteriorGP(x = (time),
+posterior_f <- posteriorGP(x = scale(time),
                            y = scale(GPpred_time),
-                           XStar = (seq(1, 365*6, 1)),
+                           XStar = scale(seq(1, 365*6, 1)),
                            hyperParam = c(sigma_f, l),
                            sigmaNoise = sigma_n)
 
@@ -322,7 +322,7 @@ l2 <- 10
 d <- 365/sd(time)
 
 # Calculate noise variable (sigma_n)
-fit <- lm(temp_time ~ time)
+fit <- lm(temp_time ~ time + time^2)
 sigma_n <- sd(fit$residuals)
 
 # Fit Gaussian process
@@ -330,7 +330,7 @@ GPfit_periodic <- gausspr(x = time,
                  y = temp_time,
                  kernel = generalized_periodic_kernel,
                  kpar = list(sigma_f = sigma_f, l1 = l1, l2 = l2, d = d),
-                 var = sigma_n)
+                 var = sigma_n^2)
 
 # Predict mean of f with Gaussian process
 GPpred_periodic <- predict(GPfit_periodic, time)

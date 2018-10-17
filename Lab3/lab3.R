@@ -48,6 +48,7 @@ generate_data <- function(T, sd) {
 
 #################### Task 1 ####################
 ## Generate true hidden states and observations
+set.seed(12345);
 T <- 100 # Number of time steps
 sd <- 1
 data <- generate_data(T, sd)
@@ -118,6 +119,7 @@ print(data$Z_true[100]) # True location
 
 #################### Task 2 ####################
 ## Generate true hidden states and observations
+set.seed(12345);
 T <- 100 # Number of time steps
 sigmas <- c(5, 50)
 data_5 <- generate_data(T, sigmas[1])
@@ -233,6 +235,7 @@ print(data_50$Z_true[100 ]) # True location
 
 #################### Task 3 ####################
 ## Generate true hidden states and observations
+set.seed(12345);
 T <- 100 # Number of time steps
 sd <- 1
 data <- generate_data(T, sd)
