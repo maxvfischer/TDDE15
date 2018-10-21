@@ -1,213 +1,184 @@
-##################################
-###########   Lab 1   ############
-##################################
+########################################
+### Lab 1 - Graphical Models
+### By Max Fischer
+### TDDE15 - Advanced Machine Learning
+### Linköpings university
+########################################
+############### Functions ##############
+predict_from_network <- function(junc_tree, data, obs_variables, pred_variable) {
+  for (i in 1:dim(data)[1]) {
+    X <- NULL
+    for (j in obs_variables) {
+      X[j] <- if(data[i, j] == "yes") "yes" else "no"
+    }
+    
+    # Set evidence in junction tree for observation i
+    # We have observations of all variables except:
+    # S: If a person smokes or not
+    evidence <- setEvidence(object = junc_tree,
+                            nodes = obs_variables,
+                            states = X)
+    
+    # Do prediction of S from junction tree with the above evidence
+    prob_dist_fit <- querygrain(object = evidence,
+                                nodes = pred_variable)$S
+    prediction_fit[i] <- if (prob_dist_fit["yes"] >= 0.5) "yes" else "no"
+  }
+  
+  return (prediction_fit)
+}
 
-## Packages
+################ Setup ################
+# Install package if not installed
 if (!require(bnlearn)) {
   install.packages("bnlearn")
 }
 
+# Import package
+library(bnlearn)
+
+# Import data
+# Variables:
+# A, S, T, L, B, E, X, D
+data("asia")
+
+################ Task 1 ################
+# It is possible to show that the hill-climbing algorithm
+# can returns non-equivilant Bayesian Network structures.
+# In our case, we show it by using two different
+# score-functions in the HC-algorithm
+
+par(mfrow = c(1, 2))
+
+# Bayesian Network 1
+set.seed(12345)
+hc_network1 <- hc(x = asia,
+                  start = BN_init_1, restart = 5)
+hc_network1 <- cpdag(hc_network1) # Finds the equivilance class of the BN
+plot(hc_network1)
+
+# Bayesian Network 2
+set.seed(12345)
+hc_network2 <- hc(x = asia,
+                  score = 'aic')
+hc_network2 <- cpdag(hc_network2)
+plot(hc_network2)
+
+# Check equality
+print(all.equal(hc_network1, hc_network2))
+
+################ Task 2 ################
+# Install packages if not installed
 if (!require(gRain)) {
   source("https://bioconductor.org/biocLite.R")
   biocLite("RBGL")
-  install.packages("gRain")
 }
 
-library(bnlearn)
 library(gRain)
 
-## Part 1
+# Split Asia dataset into 80 % training and 20 % testing
+# Learn a BN on the training set.
 
-# Import dataset
-# D (dyspnoea), a two-level factor with levels yes and no.
-# T (tuberculosis), a two-level factor with levels yes and no.
-# L (lung cancer), a two-level factor with levels yes and no.
-# B (bronchitis), a two-level factor with levels yes and no.
-# A (visit to Asia), a two-level factor with levels yes and no.
-# S (smoking), a two-level factor with levels yes and no.
-# X (chest X-ray), a two-level factor with levels yes and no.
-# E (tuberculosis versus lung cancer/bronchitis), a two-level factor with levels yes and no.
-data('asia')
+# Split dataset into train and test
+train_indices <- sample(x = seq(1, dim(asia)[1], 1), 
+                        size = dim(asia)[1]*0.8,
+                        replace = FALSE)
+asia.train <- asia[train_indices,]
+asia.test <- asia[-train_indices,]
 
-# Hill climbing
-# Restart set to 5. When a local maxima is found, a number of random changes is done to the graph
-# and then the algorithm continues. It often leads to different graphs.
-iter = 100
-no_of_equal = 0
-percent_equal = numeric(0)
+# Learn BN-network structure
+BN.structure <- hc(x = asia.train,
+                   restart = 5)
+BN.structure_true <- model2network("[A][S][T|A][L|S][B|S][D|B:E][E|T:L][X|E]")
 
-# Multiple iterations are done and the percentage of equal graphs
-# are calculated during each iteration
-for (i in 1:iter) {
-  HC1 <- hc(asia, score='aic')
-  HC1 <- cpdag(HC1)
-  HC2 <- hc(asia)
-  HC2 <- cpdag(HC2)
-  if (all.equal(HC1, HC2) == TRUE) {
-    no_of_equal <- no_of_equal + 1
-  }
-  percent_equal[i] <- no_of_equal/i
-}
+# Fit parameters to train data
+BN.fit <- bn.fit(x = BN.structure,
+                 data = asia.train)
+BN.fit_true <- bn.fit(x = BN.structure_true,
+                      data = asia.train)
 
-# The convergence of how many percent of the iterations that are equal are ploted
-plot(percent_equal, type='l', xlab='Iteration', ylab='Percentage equal graphs')
-abline(h = mean(percent_equal), col="red", lty=2)
-legend(750, 1, legend=c("Percentage equal", "Mean"),
-       col=c("black", "red"), lty=1:2, cex=0.8)
+# Convert fit to gRain-object
+BN.fit_gRain <- as.grain(BN.fit)
+BN.fit_true_gRain <- as.grain(BN.fit_true)
 
-## Part 2
+# Compile BN
+# Creating a junction tree (Lauritzen-Spiegelhalter algorithm) and establishing clique potentials
+junc_tree <- compile(BN.fit_gRain)
+junc_tree_true <- compile(BN.fit_true_gRain)
 
-# Create train set (80%) and test set (20%)
-train_size = dim(asia)[1]*0.8
-train_indices = sample(nrow(asia), 4000)
-asia.train <- asia[train_indices, ]
-asia.test <- asia[-train_indices, ]
-S <- c("S")
+# Predict S from Bayesian Network and test data observations
+prediction_fit <- predict_from_network(junc_tree = junc_tree,
+                                       data = asia.test,
+                                       obs_variables = c("A", "T", "L", "B", "E", "X", "D"),
+                                       pred_variable = c("S"))
+prediction_fit_true <- predict_from_network(junc_tree = junc_tree_true,
+                                            data = asia.test,
+                                            obs_variables = c("A", "T", "L", "B", "E", "X", "D"),
+                                            pred_variable = c("S"))
 
-# Create Bayesian Network from train data
-train.hc <- hc(asia.train) 
-train.fit <- bn.fit(train.hc, asia.train) # Fit to train data
-train.as_grain <- as.grain(train.fit) # Create gRain object
-train.compiled <- compile(train.as_grain)
-
-# Create Bayesian Network from true network
-true = model2network("[A][S][T|A][L|S][B|S][D|B:E][E|T:L][X|E]") # True Bayesian network
-true.fit <- bn.fit(true, asia.train)
-true.as_grain <- as.grain(true.fit)
-true.compiled <- compile(true.as_grain)
-
-prediction_fit <- NULL
-prediction_true <- NULL
-
-# Loop for each observation in test set
-for (i in 1:dim(asia.test)[1]) {
-  
-  # Create correct formated vector for each observation
-  z <- NULL
-  for (j in c("A", "T", "L", "B", "E", "X", "D")) {
-    if (asia.test[i, j] == "no") {
-      z <- c(z, "no")
-    }
-    else {
-      z <- c(z, "yes")
-    }
-  }
-  
-  # Set evidence for train data and do prediction
-  hc3 <- setEvidence(train.compiled, nodes=c("A", "T", "L", "B", "E", "X", "D"), states=z)
-  x <- querygrain(hc3, c("S"))
-  prediction_fit <- if(x$S["no"] > x$S["yes"]) c(prediction_fit, "no") else c(prediction_fit, "yes")
-  
-  # Set evidence for true Bayesian network and do prediction
-  hc4 <- setEvidence(true.compiled, nodes=c("A", "T", "L", "B", "E", "X", "D"), states=z)
-  k <- querygrain(hc4, c("S"))
-  prediction_true <- if(k$S["no"] > k$S["yes"]) c(prediction_true, "no") else c(prediction_true, "yes")
-}
-
-# Confusion matrix
+# Calculate confusion matricies
 confusion_matrix_fit <- table(prediction_fit, asia.test$S)
-confusion_matrix_true <- table(prediction_true, asia.test$S)
+print(confusion_matrix_fit)
+confusion_matrix_true <- table(prediction_fit_true, asia.test$S)
+print(confusion_matrix_true)
 
-# Task 3
-train.hc <- hc(asia.train)
-train.mb <- mb(train.hc, "S")
-train.fit <- bn.fit(train.hc, asia.train)
-train.as_grain <- as.grain(train.fit)
-train.compiled <- compile(train.as_grain)
+################ Task 3 ################
+# Predict S only by observations of the Markov blanket.
+# It should result in the same answer, as observations of 
+# S's Markov blanket makes S independent of all the other
+# variables
 
-# Create Bayesian Network from true network
-true = model2network("[A][S][T|A][L|S][B|S][D|B:E][E|T:L][X|E]") # True Bayesian network
-true.mb <- mb(true, "S")
-true.fit <- bn.fit(true, asia.train)
-true.as_grain <- as.grain(true.fit)
-true.compiled <- compile(true.as_grain)
+# Extract Markov blanket from fitted BN structure generated from HC
+# and from fitted BN structure generated from true model
+MB_fit <- mb(x = BN.fit,
+             node = c("S"))
+MB_fit_true <- mb(x = BN.fit_true,
+                  node = c("S"))
 
-prediction_fit <- NULL
-prediction_true <- NULL
+prediction_fit_MB <- predict_from_network(junc_tree = junc_tree,
+                                          data = asia.test,
+                                          obs_variables = MB_fit,
+                                          pred_variable = c("S"))
+prediction_fit_true_MB <- predict_from_network(junc_tree = junc_tree_true,
+                                               data = asia.test,
+                                               obs_variables = MB_fit_true,
+                                               pred_variable = c("S"))
 
-# Loop for each observation in test set
-for (i in 1:dim(asia.test)[1]) {
-  
-  # For each observation in the test set, create correct formated vector of the 
-  # fitted model's Markov blanket
-  z <- NULL
-  for (j in train.mb) {
-    if (asia.test[i, j] == "no") {
-      z <- c(z, "no")
-    }
-    else {
-      z <- c(z, "yes")
-    }
-  }
-  
-  # For each observation in the test set, create correct formated vector of the 
-  # true model's Markov blanket
-  z <- NULL
-  for (j in true.mb) {
-    if (asia.test[i, j] == "no") {
-      z <- c(z, "no")
-    }
-    else {
-      z <- c(z, "yes")
-    }
-  }
-  
-  # Set evidence for train data and do prediction
-  hc3 <- setEvidence(train.compiled, nodes=train.mb, states=z)
-  x <- querygrain(hc3, c("S"))
-  prediction_fit <- if(x$S["no"] > x$S["yes"]) c(prediction_fit, "no") else c(prediction_fit, "yes")
-  
-  # Set evidence for true Bayesian network and do prediction
-  hc4 <- setEvidence(true.compiled, nodes=true.mb, states=z)
-  k <- querygrain(hc4, c("S"))
-  prediction_true <- if(k$S["no"] > k$S["yes"]) c(prediction_true, "no") else c(prediction_true, "yes")
-}
-
-# Confusion matrix
+# Calculate confusion matricies
 confusion_matrix_fit <- table(prediction_fit, asia.test$S)
-confusion_matrix_true <- table(prediction_true, asia.test$S)
+confusion_matrix_fit_true <- table(prediction_fit_true, asia.test$S)
 
-# Task 4
-# Create Naive Bayes Bayesian Network from train data
-naive_bayes <- model2network("[S][D|S][T|S][L|S][B|S][A|S][X|S][E|S]") # Naive bayes
-naive_bayes.fit <- bn.fit(naive_bayes, asia.train)
-naive_bayes.as_grain <- as.grain(naive_bayes.fit)
-naive_bayes.compiled <- compile(naive_bayes.as_grain)
+################ Task 4  ################
+# Learn the structure and parameters on the train data using a Naive Bayes Bayesian Network
+# In Naive Bayes, we assume that the predictive variables are independent given the
+# class variable (in this case S).
+# p(A|S)*p(T|S)*p(L|S)*p(B|S)*p(E|S)*p(X|S)*p(D|S)*p(S)
+# As a Bayesian Network it is represented by S being the parent to all other nodes.
+# If S is observed, all the predictive variables are independent.
 
-# Create Bayesian Network from true network
-true = model2network("[A][S][T|A][L|S][B|S][D|B:E][E|T:L][X|E]") # True Bayesian network
-true.fit <- bn.fit(true, asia.train)
-true.as_grain <- as.grain(true.fit)
-true.compiled <- compile(true.as_grain)
+# Create Native Bayes Bayesian Network
+naive_bayes_structure <- model2network("[S][A|S][T|S][L|S][B|S][E|S][X|S][D|S]")
 
-prediction_naive_bayes <- NULL
-prediction_true <- NULL
+# Fit parameters of network to train data
+BN.fit_naive_bayes <- bn.fit(x = naive_bayes_structure,
+                             data = asia.test)
 
-# Loop for each observation in test set
-for (i in 1:dim(asia.test)[1]) {
-  
-  # Create correct formated vector for each observation
-  z <- NULL
-  for (j in c("A", "T", "L", "B", "E", "X", "D")) {
-    if (asia.test[i, j] == "no") {
-      z <- c(z, "no")
-    }
-    else {
-      z <- c(z, "yes")
-    }
-  }
-  
-  # Set evidence for train data and do prediction
-  hc3 <- setEvidence(naive_bayes.compiled, nodes=c("A", "T", "L", "B", "E", "X", "D"), states=z)
-  x <- querygrain(hc3, c("S"))
-  prediction_naive_bayes <- if(x$S["no"] > x$S["yes"]) c(prediction_naive_bayes, "no") else c(prediction_naive_bayes, "yes")
-  
-  # Set evidence for true Bayesian network and do prediction
-  hc4 <- setEvidence(true.compiled, nodes=c("A", "T", "L", "B", "E", "X", "D"), states=z)
-  k <- querygrain(hc4, c("S"))
-  prediction_true <- if(k$S["no"] > k$S["yes"]) c(prediction_true, "no") else c(prediction_true, "yes")
-}
+# Convert fit to gRain-object
+BN.fit_naive_bayes_grain <- as.grain(BN.fit_naive_bayes)
 
-# Confusion matrix
-confusion_matrix_naive_bayes <- table(prediction_naive_bayes, asia.test$S)
-confusion_matrix_true <- table(prediction_true, asia.test$S)
+# Generate juncion tree and clique potentials
+junc_tree_naive_bayes <- compile(BN.fit_naive_bayes_grain)
+
+prediction_fit_naive_bayes <- predict_from_network(junc_tree = junc_tree_naive_bayes,
+                                                   data = asia.test,
+                                                   obs_variables = c("A", "T", "L", "B", "E", "X", "D"),
+                                                   pred_variable = c("S"))
+
+prediction_fit_true <- predict_from_network(junc_tree = junc_tree_true,
+                                                   data = asia.test,
+                                                   obs_variables = c("A", "T", "L", "B", "E", "X", "D"),
+                                                   pred_variable = c("S"))
+
+# Calculate confusion matricies
+confusion_matrix_naive_bayes <- table(prediction_fit_naive_bayes, asia.test$S)
+confusion_matrix_fit_true <- table(prediction_fit_true, asia.test$S)
